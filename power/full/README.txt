@@ -1,0 +1,1 @@
+Using power allometric model with only canopy heights (for HH transects)

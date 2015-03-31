@@ -1,0 +1,38 @@
+### fit.R --- 
+## Filename: fit.R
+## Description: power fit (elev only)
+## Author: Noah Peart
+## Created: Tue Mar 31 17:42:27 2015 (-0400)
+## Last-Updated: Tue Mar 31 17:42:54 2015 (-0400)
+##           By: Noah Peart
+######################################################################
+source("~/work/hh/power/elev/model.R")                                     # model/fit functions
+source("~/work/ecodatascripts/vars/heights/prep.R")                  # data prep
+source("~/work/ecodatascripts/vars/heights/canopy/load_canopy.R")    # canopy functions
+library(dplyr)
+library(magrittr)
+
+################################################################################
+##
+##                                 Run fits
+##
+################################################################################
+base_dir <- "~/work/hh/power/elev/beco/"
+yrs <- c(99, 11)
+spec <- c("beco")
+can_func <- "can_hh"  # canopy functions defined in canopy directory
+
+for (yr in yrs) {
+    dat <- prep_hh(dat=tp, yr=yr, spec=spec, can_func=can_func)
+    ps <- readRDS(paste0(base_dir, "beco_", yr, ".rds"))
+
+    method <- "SANN" # "Nelder-Mead"
+    maxit <- 1e6
+
+    fit <- run_fit(dat, ps, yr, method=method, maxit=maxit)  # SANN first
+    fit2 <- run_fit(dat, as.list(coef(fit)), yr)           # the Nelder-Mead
+
+    ## save parameters
+    ps <- as.list(coef(fit2))
+    saveRDS(ps, file=paste0(base_dir, "beco_", yr, ".rds"))
+}
