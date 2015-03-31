@@ -3,7 +3,7 @@
 ## Description: Run all fits for HH
 ## Author: Noah Peart
 ## Created: Mon Mar 30 18:49:36 2015 (-0400)
-## Last-Updated: Tue Mar 31 00:40:57 2015 (-0400)
+## Last-Updated: Tue Mar 31 13:35:44 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 source("~/work/ecodatascripts/vars/heights/prep.R")                 # data prep
@@ -14,7 +14,7 @@ library(magrittr)
 basedir <- paste0("~/work/hh/")
 can_func <- "can_hh"
 use_sann <- TRUE                  # whether to use SANN
-maxit <- 1e7                      # number of iterations to use for SANN
+maxit <- 1e6                      # number of iterations to use for SANN
 
 ## Species, years, independent variable groups
 inds <- c("full", "can", "elev", "dbh")  # independent variable groupings
@@ -60,4 +60,30 @@ aics <- lapply(fits, AIC)
 ## ## LRT
 ## anova(fits[[1]], fits[[3]])  # full model compared to canopy only model
 ## anova(fits[[1]], fits[[5]])  # full -> elev only
+h
+## Visualize
+yr <- 99
+spp <- "beco"
+ind <- "full"
 
+moddir <- paste0(basedir, ind, "/")
+source(paste0(moddir, "model.R"))
+dat <- prep_hh(dat=tp, yr=yr, spec=spp, can_func=can_func)
+ps <- readRDS(paste0(pardir, tolower(spp), "_", yr, ".rds"))
+dbh <- paste0("DBH", yr)
+ht <- paste0("HT", yr)
+
+pred1 <- do.call("gompertz", list(ps=ps, dbh=dat[,dbh],
+                                  elev=dat[,"ELEV"], canht=dat[,"canht"]))
+pred2 <- do.call("gompertz", list(ps=coef(fits[[2]]), dbh=dat[,dbh],
+                                  elev=dat[,"ELEV"], canht=dat[,"canht"]))
+plot(dat[,dbh], dat[,ht])
+points(dat[,dbh], pred1, col="red")
+points(dat[,dbh], pred2, col="blue")
+
+library(ggplot2)
+dat$p1 <- pred1
+dat$p2 <- pred2
+ggplot(dat, aes(DBH99, HT99)) + geom_point() + # geom_smooth() +
+    geom_point(aes(DBH99, p1), color="red") +
+        geom_point(aes(DBH99, p2), color="blue") + facet_wrap(~ELEV)

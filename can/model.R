@@ -3,7 +3,7 @@
 ## Description: Gompertz allometric model with only canopy
 ## Author: Noah Peart
 ## Created: Wed Mar 11 18:09:18 2015 (-0400)
-## Last-Updated: Thu Mar 19 17:34:57 2015 (-0400)
+## Last-Updated: Tue Mar 31 12:25:17 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 library(bbmle)
@@ -39,6 +39,5 @@ run_fit <- function(dat, ps, yr, method="Nelder-Mead", maxit=1e5) {
                         data = list(x = dat[, ht], dbh=dat[, dbh], canht=dat[, "canht"]),
                         method = method,
                         control = list(maxit = maxit)))
-    logLik(fit)
     return( fit )
 }
