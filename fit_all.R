@@ -3,7 +3,7 @@
 ## Description: Run all fits for HH
 ## Author: Noah Peart
 ## Created: Mon Mar 30 18:49:36 2015 (-0400)
-## Last-Updated: Mon Mar 30 23:59:29 2015 (-0400)
+## Last-Updated: Tue Mar 31 00:40:57 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 source("~/work/ecodatascripts/vars/heights/prep.R")                 # data prep
