@@ -3,7 +3,7 @@
 ## Description: Compare fits
 ## Author: Noah Peart
 ## Created: Mon Mar 30 18:04:51 2015 (-0400)
-## Last-Updated: Wed Apr  1 19:22:46 2015 (-0400)
+## Last-Updated: Fri Apr  3 11:09:35 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 source("~/work/ecodatascripts/vars/heights/prep.R")                 # data prep
@@ -13,7 +13,7 @@ library(magrittr)
 
 ## Re-run fast fits
 models <- c("gompertz", "power")
-inds <- c("full", "can", "elev")  # independent variable groupings
+inds <- c("dbh", "full", "can", "elev")  # independent variable groupings
 specs <- c("abba", "beco")
 basedir <- paste0("~/work/hh/")
 can_func <- "can_hh"
@@ -30,14 +30,19 @@ for (model in models) {
                 dat <- prep_hh(dat=tp, yr=yr, spec=spec, can_func=can_func)
                 ps <- readRDS(paste0(inddir, tolower(spec), "/", tolower(spec), "_", yr, ".rds"))
                 fit <- run_fit(dat, ps, yr)
-                name <- paste0(tolower(model),tolower(spec), yr, ind)
+                name <- paste(tolower(model),tolower(spec), yr, ind, sep="_")
                 fits[name] <- fit
             }
         }
     }
 }
 ## Compare AICs
-aics <- lapply(fits, FUN=function(x) AICc(x, nobs = nrow(dat)))
+aics <- lapply(fits, AIC)
+abbas <- grep("abba", names(aics))
+becos <- grep("beco", names(aics))
+
+acomp <- split(aics[abbas], grep("gompertz", names(aics[abbas])))
+bcomp <- split(aics[becos], grep("gompertz", names(aics[becos])))
 
 ## LRT
 anova(fits[[1]], fits[[3]])  # full model compared to canopy only model
