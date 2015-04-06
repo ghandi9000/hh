@@ -1,0 +1,140 @@
+```{r setup}
+knit_hooks$set(webgl = hook_webgl)
+```
+
+```{r, echo = FALSE}
+source("~/work/ecodatascripts/vars/heights/prep.R")  
+source("~/work/ecodatascripts/vars/heights/canopy/load_canopy.R")
+source("~/work/ecodatascripts/vars/heights/vis_functions.R")
+library(dplyr, warn.conflicts=FALSE, quietly=TRUE)
+library(magrittr)
+library(ggplot2)
+library(rgl)
+library(bbmle)
+
+fits <- readRDS("../temp/fits.rds")
+stats <- readRDS("../temp/stats.rds")
+becos <- stats[stats$Species == "beco", ]
+abbas <- stats[stats$Species == "abba", ]
+```
+
+## HH fits
+Gompertz:
+$H = \beta*e^{log(\frac{\gamma}{\beta})e^{-\alpha DBH}}$
+
+Power:
+$H = \gamma + \beta DBH^{\alpha}$
+
+AIC values for gompertz and power fits.
+```{r}
+abbas %>%
+  arrange(Year, AICc)
+becos %>%
+  arrange(Year, AICc)
+```
+
+
+# Gompertz models with canopy height only (the current version used for height prediction).
+## BECO fits:
+```{r, webgl=TRUE, cache=TRUE, echo=FALSE}
+spec <- "beco"
+model <- "gompertz"
+inds <- "can"
+hh <- TRUE
+years <- c(99, 11)
+preds <- get_preds(spec, years, modtype = model, inds = inds, hh=hh)
+plot_preds(preds)
+add_pred_lines(preds)
+add_observed(preds)
+```
+
+## ABBA fits:
+```{r, webgl=TRUE, cache=TRUE, echo=FALSE}
+spec <- "abba"
+model <- "gompertz"
+inds <- "can"
+hh <- TRUE
+years <- c(99, 11)
+preds <- get_preds(spec, years, modtype = model, inds = inds, hh=hh)
+plot_preds(preds)
+add_pred_lines(preds)
+add_observed(preds)
+```
+
+## Best fits
+Gompertz full model is fitting best for ABBA.
+```{r, echo=FALSE}
+ind <- grep("gompertz_abba_[[:digit:]]+_full", names(fits))
+f99 <- fits[[ind[1]]]
+f11 <- fits[[ind[2]]]
+```
+### 99
+```{r}
+summary(f99)
+```
+### 11
+```{r}
+summary(f11)
+```
+
+
+# Profiles
+## ABBA, gompertz full
+```{r, cache=TRUE, echo=FALSE}
+can_func = "can_hh"
+spec = "ABBA"
+method = "Nelder-Mead"
+source("~/work/hh/gompertz/full/model.R")
+
+## 99
+fit <- f99
+yr <- 99
+p1 <- profile(fit, which = names(ps)[!(names(ps) %in% c("sd", "b", "b2", "a", "a2"))])  # can't profile 'b' (flat)
+# ps <- coef(p1)
+# names(ps) <- gsub("\\..*", "", names(ps))
+# dat <- prep_hh(dat=tp, yr=yr, spec=spec, can_func=can_func)
+# fit <- run_fit(dat, ps, yr)
+plot(p1)
+```
+
+## BECO, power/gompertz canopy only (11) and full gompertz (99)
+```{r, echo=FALSE}
+ind <- grep("power_beco_[[:digit:]]+_can", names(fits))
+f11 <- fits[[ind[2]]]
+
+ind <- grep("gompertz_beco_[[:digit:]]+_full", names(fits))
+f99 <- fits[[ind[1]]]
+
+can_func = "can_hh"
+spec = "BECO"
+method = "Nelder-Mead"
+```
+
+### 99
+```{r}
+summary(f99)
+```
+
+```{r, echo=FALSE}
+# source("~/work/hh/gompertz/full/model.R")
+# summary(f99)
+# fit <- f99
+# yr <- 99
+# 
+# p1 <- profile(fit)
+# # p1 <- profile(fit, which = names(ps)[!(names(ps) %in% c("sd", "b", "b2", "a", "a2"))])  # can't profile 'b' (flat)
+# ps <- coef(p1)
+# names(ps) <- gsub("\\..*", "", names(ps))
+# dat <- prep_hh(dat=tp, yr=yr, spec=spec, can_func=can_func)
+# fit <- run_fit(dat, ps, yr)
+# 
+# plot(p1)
+```
+
+### 11
+```{r, cache=TRUE}
+source("~/work/hh/power/can/model.R")
+summary(f11)
+p1 <- profile(fit)
+plot(p1)
+```

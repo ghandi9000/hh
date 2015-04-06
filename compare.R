@@ -3,7 +3,7 @@
 ## Description: Compare fits
 ## Author: Noah Peart
 ## Created: Mon Mar 30 18:04:51 2015 (-0400)
-## Last-Updated: Fri Apr  3 11:09:35 2015 (-0400)
+## Last-Updated: Mon Apr  6 12:12:40 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 source("~/work/ecodatascripts/vars/heights/prep.R")                 # data prep
@@ -19,6 +19,7 @@ basedir <- paste0("~/work/hh/")
 can_func <- "can_hh"
 yrs <- c(99, 11)
 
+stats <- list()
 fits <- list()
 for (model in models) {
     moddir <- paste0(basedir, model, "/")
@@ -32,10 +33,37 @@ for (model in models) {
                 fit <- run_fit(dat, ps, yr)
                 name <- paste(tolower(model),tolower(spec), yr, ind, sep="_")
                 fits[name] <- fit
+                stats[[name]] <- c(spec, model, ind, yr, AIC(fit), AICc(fit, nobs=nrow(dat)))
             }
         }
     }
 }
+
+## Profile
+model <- "power"
+ind <- "full"
+spec <- "beco"
+yr <- 99
+method <- "Nelder-Mead"
+p1 <- profile(fit, method="uniroot")
+ps <- coef(p1)
+names(ps) <- gsub("\\..*", "", names(ps))
+fit <- run_fit(dat, ps, yr)
+
+## Stats
+stats <- as.data.frame(do.call(rbind, stats))
+rownames(stats) <- NULL
+names(stats) <- c("Species", "Model", "Vars", "Year", "AIC", "AICc")
+stats$AIC <- as.numeric(as.character(stats$AIC))
+stats$AICc <- as.numeric(as.character(stats$AICc))
+
+## Save fits/stats to temp
+saveRDS(fits, "./temp/fits.rds")
+saveRDS(stats, "./temp/stats.rds")
+
+## By species
+abbas <- stats[stats$Species == "abba", ]
+
 ## Compare AICs
 aics <- lapply(fits, AIC)
 abbas <- grep("abba", names(aics))
@@ -47,3 +75,6 @@ bcomp <- split(aics[becos], grep("gompertz", names(aics[becos])))
 ## LRT
 anova(fits[[1]], fits[[3]])  # full model compared to canopy only model
 anova(fits[[1]], fits[[5]])  # full -> elev only
+
+## Visuals
+library(ggplot2)

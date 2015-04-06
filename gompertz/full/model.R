@@ -3,7 +3,7 @@
 ## Description: Gompertz allometric model (elevation and canopy as predictors)
 ## Author: Noah Peart
 ## Created: Wed Mar 11 18:09:18 2015 (-0400)
-## Last-Updated: Mon Mar 30 17:39:42 2015 (-0400)
+## Last-Updated: Mon Apr  6 10:27:39 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 library(bbmle)
@@ -42,12 +42,11 @@ run_fit <- function(dat, ps, yr, method="Nelder-Mead", maxit=1e5) {
     parnames(normNLL) <- c(names(ps))
     ht <- paste0("HT", yr)
     dbh <- paste0("DBH", yr)
-    summary(fit <- mle2(normNLL,
-                        start = unlist(ps,recursive = FALSE),
-                        data = list(x = dat[, ht], dbh=dat[, dbh], elev=dat[, "ELEV"],
-                                    canht=dat[,"canht"]),
-                        method = method,
-                        control = list(maxit = maxit)))
-    logLik(fit)
+    fit <- mle2(normNLL,
+                start = unlist(ps, recursive = FALSE),
+                data = list(x = dat[, ht], dbh=dat[, dbh], elev=dat[, "ELEV"],
+                canht=dat[,"canht"]),
+                method = method,
+                control = list(maxit = maxit))
     return( fit )
 }
