@@ -1,9 +1,0 @@
-base
-knitr
-dplyr
-lazyeval
-rgl
-plyr
-magrittr
-ggplot2
-bbmle

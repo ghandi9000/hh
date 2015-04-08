@@ -12,5 +12,9 @@ __py*
 *.mp4
 temp/
 .*~
+*.html
+summary/cache/
+explore/Figs/
+*.js
 
 !.gitignore

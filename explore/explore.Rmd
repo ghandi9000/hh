@@ -1,0 +1,201 @@
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+## Examine variation/ht trends in size classes
+Variation in height vs. DBH is heteroskedastic.  How does this affect model fitting?
+Idea here is to get some quanitification of what the model should look like when trying to determine if there is an effect of year on allometry.  Try breaking the height vs. dbh effect into classes that can be modelled linearly and hopefully with less heteroskedacity to get a simple idea of what the more complicated nonlinear models should be doing.
+
+```{r prep_data, results='hide', message=FALSE, echo=FALSE}
+source("~/work/ecodatascripts/vars/heights/prep.R")  # data prep/load
+source("~/work/functions/functions-plotting.R")      # multiplot
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+
+## tidy, wide -> long
+yrs <- c(99, 11)
+cols <- grep("^STAT|^DBH|^HT|TRAN|TPLOT|TAG|SPEC|ASP", names(tp))
+dat <- tp[tp$ELEVCL == "HH", cols]
+cols <- grep("[[:alpha::]]*$|.*99$|.*11$", names(dat))
+dat <- dat[, cols]  # remove other year columns
+
+dat <- reshape(dat, times = c(99, 11), direction = "long",
+               varying = list(
+               STAT = grep("^STAT", names(dat)),
+               DBH = grep("^DBH", names(dat)),
+               HT = grep("^HT[[:digit:]]", names(dat)),
+               HTCL = grep("HTCL", names(dat))),
+               v.names = c("STAT", "DBH", "HT", "HTCL"),
+               timevar = "YEAR")
+
+p99 <- dat[dat$YEAR == 99, ]
+p11 <- dat[dat$YEAR == 11, ]
+
+## Quantiles
+qFunc <- function(dd, cname) { return( data.frame(x=unlist(quantile(dd[[cname]], na.rm=T))) ) }
+qDBH <- dat %>% group_by(YEAR) %>% do(qFunc(., "DBH"))  # DBH quantiles by year
+qHT <- dat %>% group_by(YEAR) %>% do(qFunc(., "HT"))    # HT quantiles by year
+
+## Ranges
+rDBH <- range(dat$DBH, na.rm = T)
+rHT <- range(dat$HT, na.rm = T)
+
+```
+
+## Summary figures
+
+### DBH
+DBH ranges from `r rDBH`.  CDFs are cumulative distributions.  Dashed lines are quantiles.
+
+```{r dbh_figures, echo=FALSE, message=FALSE}
+
+ggplot(dat, aes(x=DBH)) +
+    geom_histogram(aes(y=..density..), color="black", fill="white") +
+        geom_density(alpha=0.2, fill="#FF6666") + facet_wrap(~ YEAR) +
+ggtitle("DBH distribution by year") +
+    geom_vline(data=qDBH, aes(xintercept = x), color="orange", linetype="dashed", lwd=1, alpha=0.6)
+
+p1 <- ggplot(p99, aes(DBH)) + geom_histogram(aes(DBH, y = 1 - cumsum(..count..)/sum(..count..))) +
+    ggtitle("DBH 1999, 1 - CDF") +
+        geom_vline(data=qDBH[qDBH$YEAR==99,], aes(xintercept=x), color="green", linetype="longdash")
+p2 <- ggplot(p99, aes(DBH)) + geom_histogram(aes(DBH, y = cumsum(..count..)/sum(..count..))) +
+    ggtitle("DBH 1999, CDF") +
+        geom_vline(data=qDBH[qDBH$YEAR==11,], aes(xintercept=x), color="green", linetype="longdash")
+multiplot(p1, p2, cols = 2)
+
+p1 <- ggplot(p11, aes(DBH)) + geom_histogram(aes(DBH, y = 1 - cumsum(..count..)/sum(..count..))) +
+    ggtitle("DBH 2011, 1 - CDF") +
+        geom_vline(data=qDBH[qDBH$YEAR==11,], aes(xintercept=x), color="green", linetype="longdash")
+p2 <- ggplot(p11, aes(DBH)) + geom_histogram(aes(DBH, y = cumsum(..count..)/sum(..count..))) +
+    ggtitle("DBH 2011, CDF") +
+        geom_vline(data=qDBH[qDBH$YEAR==11,], aes(xintercept=x), color="green", linetype="longdash")
+multiplot(p1, p2, cols = 2)
+
+```
+
+
+### Height
+HT ranges from `r rHT`.
+
+```{r height_figures, echo=FALSE, message=FALSE}
+
+ggplot(dat, aes(x=HT)) + facet_wrap(~ YEAR) + 
+    geom_histogram(aes(y=..density..), color="black", fill="white") +
+        geom_density(alpha=0.2, fill="#FF6666") +
+ggtitle("HT distribution by year") +
+    geom_vline(data=qHT, aes(xintercept=x), color="orange", linetype="dashed", lwd=1, alpha=0.6)
+
+p1 <- ggplot(p99, aes(HT)) + geom_histogram(aes(HT, y = 1 - cumsum(..count..)/sum(..count..))) +
+    ggtitle("HT 1999, 1 - CDF") +
+        geom_vline(data=qHT[qHT$YEAR==99,], aes(xintercept=x), color="green", linetype="longdash")
+p2 <- ggplot(p99, aes(HT)) + geom_histogram(aes(HT, y = cumsum(..count..)/sum(..count..))) +
+    ggtitle("HT 1999, CDF") +
+        geom_vline(data=qHT[qHT$YEAR==11,], aes(xintercept=x), color="green", linetype="longdash")
+multiplot(p1, p2, cols = 2)
+
+p1 <- ggplot(p11, aes(HT)) + geom_histogram(aes(HT, y = 1 - cumsum(..count..)/sum(..count..))) +
+    ggtitle("HT 2011, 1 - CDF") +
+        geom_vline(data=qHT[qHT$YEAR==99,], aes(xintercept=x), color="green", linetype="longdash")
+p2 <- ggplot(p11, aes(HT)) + geom_histogram(aes(HT, y = cumsum(..count..)/sum(..count..))) +
+    ggtitle("HT 2011, CDF") +
+        geom_vline(data=qHT[qHT$YEAR==11,], aes(xintercept=x), color="green", linetype="longdash")
+multiplot(p1, p2, cols = 2)
+
+```
+
+## Height vs. DBH curves
+```{r htVdbh, echo=FALSE, message=FALSE}
+ggplot(dat, aes(DBH, HT)) + geom_point(color="blue", alpha=0.2) +
+    geom_smooth() + facet_wrap(~ YEAR) + geom_density2d() +
+        ggtitle("HT vs DBH by year with density")
+```
+
+## Size classes
+Using both years to create size classes, differences can be examined across years.
+Size classes shown here are created by breaking DBH and HT into 4 quantiles (0-.25, .25-.5, .5-.75, .75-1).
+
+```{r sclass_setup}
+
+classify <- function(dat, probs=c(0, 0.25, 0.5, 0.75, 1.0)) {
+    dat[,"HTCL"] <- NA
+    dat[,"DBHCL"] <- NA
+    qDBH <- quantile(dat[["DBH"]], na.rm=T, probs=probs)
+    qHT <- quantile(dat[["HT"]], na.rm=T, probs=probs)
+    qDBH[[1]] <- 0  # make sure smallest is included
+    qHT[[1]] <- 0
+    for (i in 1:(length(probs)-1)) {
+        dat[!is.na(dat$HT) & dat$HT > qHT[[i]] & dat$HT <= qHT[[i+1]], "HTCL"] <- i
+        dat[!is.na(dat$DBH) & dat$DBH > qDBH[[i]] & dat$DBH <= qDBH[[i+1]], "DBHCL"] <- i
+    }
+    dat[["HTCL"]] <- factor(dat[["HTCL"]])
+    dat[["DBHCL"]] <- factor(dat[["DBHCL"]])
+    dat
+}
+dat <- classify(dat)
+dat$YEAR <- factor(dat$YEAR)
+```
+
+### Variation in Height by size classes(DBH and HT)
+```{r htVclass}
+
+ggplot(na.omit(dat), aes(x=HTCL, y=HT, fill=YEAR), na.rm=T) + geom_jitter(alpha=0.5, aes(color=YEAR)) +
+    geom_boxplot(alpha=0.3) + 
+    ggtitle("Variation in height by HT size class")
+
+ggplot(na.omit(dat), aes(DBH, HT, fill=YEAR)) + geom_point(alpha=0.5, aes(color=YEAR)) +
+    geom_boxplot(alpha=0.3) + 
+    facet_wrap(~DBHCL + YEAR, ncol = 2) + ggtitle("Variation in height by DBH size class + YEAR")
+
+ggplot(na.omit(dat), aes(x=DBH, y=HT, fill=YEAR)) + geom_point(alpha=0.5, aes(color=YEAR)) +
+    geom_boxplot(alpha=0.3) +
+    facet_wrap(~HTCL + YEAR, ncol=2) + ggtitle("Variation in height by HT size class + YEAR")
+
+
+```
+
+### Variation in DBH by size classes(DBH and HT)
+```{r dbhVclass}
+
+ggplot(na.omit(dat), aes(x=DBHCL, y=DBH, fill=YEAR), na.rm=T) + geom_jitter(alpha=0.5, aes(color=YEAR)) +
+    geom_boxplot(alpha=0.3) + 
+    ggtitle("Variation in DBH by DBH size class")
+
+ggplot(na.omit(dat), aes(x=HT, y=DBH, fill=YEAR), na.rm=T) + geom_point(alpha=0.5, aes(color=YEAR)) +
+    geom_boxplot(alpha=0.3) + 
+    facet_wrap(~HTCL + YEAR, ncol=2) + ggtitle("Variation in DBH by HT size class + year")
+
+ggplot(na.omit(dat), aes(x=HT, y=DBH, fill=YEAR), na.rm=T) + geom_point(alpha=0.5, aes(color=YEAR)) +
+    geom_boxplot(alpha=0.3) + 
+    facet_wrap(~DBHCL + YEAR, ncol=2) + ggtitle("Variation in DBH by DBH size class + year")
+
+
+```
+
+## Height vs DBH by *DBH size classes*
+Size classes are from 0-4, 0 being the smallest.  The linear model intercept corresponds to smallest size class and YEAR 2011.
+
+This model doesn't have canopy height in it right now, will add that later.
+
+```{r dbhclModel, echo=TRUE}
+
+## Linear model with indicators and interaction terms
+summary(dclMod <- lm(HT ~ I(YEAR)*I(DBHCL)*DBH, data=dat))
+
+```
+
+```{r htVdbh_DBHCL}
+
+dat$pred <- predict(dclMod, newdata=dat)
+
+ggplot(na.omit(dat), aes(DBH, HT, color=YEAR)) + geom_point(alpha=0.5) +
+    geom_smooth() + ggtitle("Height vs. DBH with smoothed splines") +
+        facet_wrap(~DBHCL, scales='free')
+
+ggplot(na.omit(dat), aes(DBH, HT, color=YEAR)) + geom_point(alpha=0.5) +
+    geom_line(aes(DBH, pred, color=YEAR)) +
+        facet_wrap(~DBHCL, scales='free') +
+            ggtitle("Height vs. DBH with fits from linear model above (YEAR + DBHCL)*DBH")
+
+```
