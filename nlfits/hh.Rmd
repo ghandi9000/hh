@@ -1,0 +1,617 @@
+---
+title: "HH Nonlinear Fits"
+date: "Last modified: `r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: false
+    theme: spacelab
+    highlight: zenburn
+---
+
+```{r global_opts, include=FALSE}
+knitr::opts_chunk$set(fig.path='Figs/', fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE, cache=TRUE)
+```
+
+```{r setup}
+
+source("./setup.R")
+source("./functions.R")
+abbas <- dat[dat$SPEC == "ABBA", ]
+becos <- dat[dat$SPEC == "BECO", ]
+
+```
+
+# Info
+[code](http://github.com/ghandi9000/hh) repository
+
+- Modeled for 99, and 11.
+- Boths models predicted for both years.
+- Issues: a couple of the BECO fits are bad from 2011 and need to be rerun.
+
+---------------
+
+# Full Gompertz
+
+__Full Model__ {dbh, canopy, elevation}
+
+$$
+HT = \beta e^{\log(\frac{\gamma}{\beta})e^{-\alpha DBH}}
+$$
+
+where $\gamma$ is DBH height,
+
+$\alpha = a + a_1 ELEV + a_2 CANHT + a_3 ELEV*CANHT$,
+
+$\beta = b + b_1 ELEV + b_2 CANHT + b_3ELEV*CANHT$
+
+--------------------------------------------------
+
+## ABBA
+
+ABBA **1999** estimates
+```{r gomp_abba_full99, results='asis'}
+source("~/work/hh/gompertz/full/model.R")
+library(xtable)
+ind99 <- grep("gompertz_abba_99_full", names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+ABBA **2011** estimates
+```{r gomp_abba_full11, results='asis'}
+ind11 <- grep("gompertz_abba_11_full", names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### ABBA figures
+
+```{r gomp_abba_full_vis}
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+abbas$pred99 <- do.call("gompertz", list(ps=ps99,
+                                   dbh=abbas[["DBH"]],
+                                   elev=abbas[["ELEV"]],
+                                   canht=abbas[["CANHT"]]))
+abbas$pred11 <- do.call("gompertz", list(ps=ps11,
+                                   dbh=abbas[["DBH"]],
+                                   elev=abbas[["ELEV"]],
+                                   canht=abbas[["CANHT"]]))
+d <- melt(abbas, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(abbas$TRAN)
+for (tran in trans) {
+  
+  if (nrow(abbas[abbas$TRAN == tran,]) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("ABBA Full Gompertz model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+---------------------
+
+## BECO
+
+**1999** estimates
+```{r gomp_beco_full99, results='asis'}
+source("~/work/hh/gompertz/full/model.R")
+library(xtable)
+ind99 <- grep("gompertz_beco_99_full", names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+**2011** estimates
+```{r gomp_beco_full11, results='asis'}
+ind11 <- grep("gompertz_beco_11_full", names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### BECO figures
+
+```{r gomp_beco_full_vis}
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+becos$pred99 <- do.call("gompertz", list(ps=ps99,
+                                   dbh=becos[["DBH"]],
+                                   elev=becos[["ELEV"]],
+                                   canht=becos[["CANHT"]]))
+becos$pred11 <- do.call("gompertz", list(ps=ps11,
+                                   dbh=becos[["DBH"]],
+                                   elev=becos[["ELEV"]],
+                                   canht=becos[["CANHT"]]))
+d <- melt(becos, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(becos$TRAN)
+for (tran in trans) {
+  
+  if (nrow(na.omit(d[d$TRAN == tran,])) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("BECO Full Gompertz model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+
+---------------
+
+# Gompertz [DBH, CANOPY]
+
+$$
+HT = \beta e^{\log(\frac{\gamma}{\beta})e^{-\alpha DBH}}
+$$
+
+where $\gamma$ is DBH height,
+
+$\alpha = a + a_1 CANHT$,
+
+$\beta = b + b_1 CANHT$
+
+--------------------------------------------------
+
+## ABBA
+
+ABBA **1999** estimates
+```{r abba_99_can, results='asis'}
+mod <- "can"
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+library(xtable)
+ind99 <- grep(paste0("gompertz_abba_99_", mod), names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+ABBA **2011** estimates
+```{r abba_11_can, results='asis'}
+ind11 <- grep(paste0("gompertz_abba_11_", mod), names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### ABBA figures
+
+```{r gomp_abba_can_vis}
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+abbas$pred99 <- do.call("gompertz", list(ps=ps99,
+                                   dbh=abbas[["DBH"]],
+                                   canht=abbas[["CANHT"]]))
+abbas$pred11 <- do.call("gompertz", list(ps=ps11,
+                                   dbh=abbas[["DBH"]],
+                                   canht=abbas[["CANHT"]]))
+d <- melt(abbas, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(abbas$TRAN)
+for (tran in trans) {
+  
+  if (nrow(abbas[abbas$TRAN == tran,]) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("ABBA [", toupper(mod), "] Gompertz model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+---------------------
+
+## BECO
+
+**1999** estimates
+```{r, results='asis'}
+mod <- "can"
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+library(xtable)
+ind99 <- grep(paste0("gompertz_beco_99_", mod), names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+**2011** estimates
+```{r, results='asis'}
+ind11 <- grep(paste0("gompertz_beco_11_", mod), names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### BECO figures
+
+```{r gomp_beco_can_vis}
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+becos$pred99 <- do.call("gompertz", list(ps=ps99,
+                                   dbh=becos[["DBH"]],
+                                   canht=becos[["CANHT"]]))
+becos$pred11 <- do.call("gompertz", list(ps=ps11,
+                                   dbh=becos[["DBH"]],
+                                   canht=becos[["CANHT"]]))
+d <- melt(becos, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(becos$TRAN)
+for (tran in trans) {
+  
+  if (nrow(na.omit(d[d$TRAN == tran,])) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("BECO [", mod, "] Gompertz model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+---------------
+
+# Gompertz [DBH, ELEV]
+
+$$
+HT = \beta e^{\log(\frac{\gamma}{\beta})e^{-\alpha DBH}}
+$$
+
+where $\gamma$ is DBH height,
+
+$\alpha = a + a_1 ELEV$,
+
+$\beta = b + b_1 ELEV$
+
+--------------------------------------------------
+
+## ABBA
+
+ABBA **1999** estimates
+```{r abba_99_elev, results='asis'}
+mod <- "elev"
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+library(xtable)
+ind99 <- grep(paste0("gompertz_abba_99_", mod), names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+ABBA **2011** estimates
+```{r abba_11_elev, results='asis'}
+ind11 <- grep(paste0("gompertz_abba_11_", mod), names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### ABBA figures
+
+```{r gomp_abba_elev_vis}
+mod <- "elev"
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+abbas$pred99 <- do.call("gompertz", list(ps=ps99,
+                                   dbh=abbas[["DBH"]],
+                                   elev=abbas[["ELEV"]]))
+abbas$pred11 <- do.call("gompertz", list(ps=ps11,
+                                   dbh=abbas[["DBH"]],
+                                   elev=abbas[["ELEV"]]))
+d <- melt(abbas, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(abbas$TRAN)
+for (tran in trans) {
+  
+  if (nrow(abbas[abbas$TRAN == tran,]) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("ABBA [", toupper(mod), "] Gompertz model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+---------------------
+
+## BECO
+**NOTE**: Currently, this only has one model predicted for 1999 that is used for both years!  Need to rework the model fit for 2011.
+
+**1999** estimates
+```{r, results='asis'}
+mod <- "elev"
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+library(xtable)
+ind99 <- grep(paste0("gompertz_beco_99_", mod), names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+**2011** estimates
+```{r, results='asis'}
+ind11 <- grep(paste0("gompertz_beco_11_", mod), names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### BECO figures
+
+```{r gomp_beco_elev_vis}
+mod <- "elev"
+source(paste0("~/work/hh/gompertz/", mod, "/model.R"))
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+becos$pred99 <- do.call("gompertz", list(ps=ps99,
+                                   dbh=becos[["DBH"]],
+                                   elev=becos[["ELEV"]]))
+becos$pred11 <- do.call("gompertz", list(ps=ps11,
+                                   dbh=becos[["DBH"]],
+                                   elev=becos[["ELEV"]]))
+d <- melt(becos, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(becos$TRAN)
+for (tran in trans) {
+  
+  if (nrow(na.omit(d[d$TRAN == tran,])) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("BECO [", toupper(mod), "] Gompertz model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+---------------
+
+# Power [DBH, CANHT, ELEV]
+
+$$
+HT = \gamma + \alpha DBH^{\beta}
+$$
+
+where $\gamma$ is DBH height,
+
+$\alpha = a + a_1 ELEV + a_2 ELEV + a_3 CANHT*ELEV$,
+
+$\beta = b + b_1 ELEV + b_2 CANHT + b_3 ELEV*CANHT$
+
+--------------------------------------------------
+
+## ABBA
+
+ABBA **1999** estimates
+```{r abba_99_pow_full, results='asis'}
+mod <- "full"
+source(paste0("~/work/hh/power/", mod, "/model.R"))
+library(xtable)
+ind99 <- grep(paste0("power_abba_99_", mod), names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+ABBA **2011** estimates
+```{r abba_11_pow_full, results='asis'}
+ind11 <- grep(paste0("power_abba_11_", mod), names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### ABBA figures
+
+```{r pow_abba_full_vis}
+mod <- "full"
+source(paste0("~/work/hh/power/", mod, "/model.R"))
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+abbas$pred99 <- do.call("pow", list(ps=ps99,
+                                   dbh=abbas[["DBH"]],
+                                   canht=abbas[["CANHT"]],
+                                   elev=abbas[["ELEV"]]))
+abbas$pred11 <- do.call("pow", list(ps=ps11,
+                                   dbh=abbas[["DBH"]],
+                                   canht=abbas[["CANHT"]],
+                                   elev=abbas[["ELEV"]]))
+d <- melt(abbas, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(abbas$TRAN)
+for (tran in trans) {
+  
+  if (nrow(abbas[abbas$TRAN == tran,]) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("ABBA [", toupper(mod), "] Power model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
+
+---------------------
+
+## BECO
+
+**1999** estimates
+```{r, results='asis'}
+mod <- "full"
+source(paste0("~/work/hh/power/", mod, "/model.R"))
+library(xtable)
+ind99 <- grep(paste0("power_beco_99_", mod), names(fits))
+fit99 <- fits[[ind99]]
+print(xtable::xtable(summary(fit99)@coef, 
+                     caption = "1999 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+**2011** estimates
+```{r, results='asis'}
+ind11 <- grep(paste0("power_beco_11_", mod), names(fits))
+fit11 <- fits[[ind11]]
+print(xtable::xtable(summary(fit11)@coef, 
+                     caption = "2011 estimates",
+                     display=c('s','E','E','E','E')),
+                     type="html",
+                     include.rownames=TRUE)
+```
+
+-------
+
+### BECO figures
+
+```{r pow_beco_full_vis}
+ps99 <- coef(fit99)
+ps11 <- coef(fit11)
+becos$pred99 <- do.call("pow", list(ps=ps99,
+                                   dbh=becos[["DBH"]],
+                                   canht=becos[["CANHT"]],
+                                   elev=becos[["ELEV"]]))
+becos$pred11 <- do.call("pow", list(ps=ps11,
+                                   dbh=becos[["DBH"]],
+                                   canht=becos[["CANHT"]],
+                                   elev=becos[["ELEV"]]))
+d <- melt(becos, measure=c("HT", "pred99", "pred11"), value.name="ht", variable.name="type")
+levels(d$type)[1] <- "Observed"
+
+## Plot stuff
+trans <- levels(becos$TRAN)
+for (tran in trans) {
+  
+  if (nrow(na.omit(d[d$TRAN == tran,])) > 0) {
+    
+    dd <- d[d$TRAN == tran,]
+
+    p <- ggplot(na.omit(dd), aes(DBH, ht, color=YEAR)) + 
+      geom_point(data=na.omit(dd[dd$type == "Observed",]), aes(DBH, ht, color=YEAR), alpha=0.5) +
+      facet_wrap(~TPLOT) + 
+      geom_line(data=na.omit(dd[dd$type %in% c("pred99", "pred11"),]), aes(DBH, ht, linetype=type, color=YEAR)) +
+      ggtitle(paste0("BECO [", toupper(mod), "] Power model, Transect: ", tran))
+    print(p)
+    }
+  }
+
+```
