@@ -7,32 +7,9 @@ knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
 Variation in height vs. DBH is heteroskedastic.  How does this affect model fitting?
 Idea here is to get some quanitification of what the model should look like when trying to determine if there is an effect of year on allometry.  Try breaking the height vs. dbh effect into classes that can be modelled linearly and hopefully with less heteroskedacity to get a simple idea of what the more complicated nonlinear models should be doing.
 
-```{r prep_data, results='hide', message=FALSE, echo=FALSE}
-source("~/work/ecodatascripts/vars/heights/prep.R")  # data prep/load
-source("~/work/functions/functions-plotting.R")      # multiplot
-library(reshape2)
-library(dplyr)
-library(ggplot2)
+```{r setup, results='hide', message=FALSE, echo=FALSE}
 
-## tidy, wide -> long
-yrs <- c(99, 11)
-cols <- grep("^STAT|^DBH|^HT|TRAN|TPLOT|TAG|SPEC|ASP", names(tp))
-dat <- tp[tp$ELEVCL == "HH", cols]
-cols <- grep("[[:alpha::]]*$|.*99$|.*11$", names(dat))
-dat <- dat[, cols]  # remove other year columns
-
-dat <- reshape(dat, times = c(99, 11), direction = "long",
-               varying = list(
-               STAT = grep("^STAT", names(dat)),
-               DBH = grep("^DBH", names(dat)),
-               HT = grep("^HT[[:digit:]]", names(dat)),
-               HTCL = grep("HTCL", names(dat))),
-               v.names = c("STAT", "DBH", "HT", "HTCL"),
-               timevar = "YEAR")
-
-p99 <- dat[dat$YEAR == 99, ]
-p11 <- dat[dat$YEAR == 11, ]
-
+source("~/work/hh/explore/setup.R")  # load/prep data
 ## Quantiles
 qFunc <- function(dd, cname) { return( data.frame(x=unlist(quantile(dd[[cname]], na.rm=T))) ) }
 qDBH <- dat %>% group_by(YEAR) %>% do(qFunc(., "DBH"))  # DBH quantiles by year

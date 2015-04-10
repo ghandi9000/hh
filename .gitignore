@@ -17,5 +17,6 @@ summary/cache/
 explore/Figs/
 *.js
 *.RData
+*.zip
 
 !.gitignore

@@ -1,0 +1,156 @@
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r setup, results='hide'}
+source("setup.R")
+source("functions.R")
+
+## Quantiles
+qDBH <- dat %>% group_by(YEAR) %>% do(qFunc(., "DBH"))  # DBH quantiles by year
+qHT <- dat %>% group_by(YEAR) %>% do(qFunc(., "HT"))    # HT quantiles by year
+
+```
+
+## Linear models for HT vs. DBH by size classes
+* 4 roughly equal size classes (quantiles), created using both years combined.
+So, 99 has fewer trees in large size class and more in small classes.
+
+```{r samp_size}
+
+numSizes <- 4
+
+## Set quantile bounds for size class classification
+probs <- c(0, 0.25, 0.5, 0.75, 1.0)
+dat <- classify(dat, probs)
+t1 <- table(dat[, c("DBHCL","HTCL","YEAR")])
+addmargins(t1)
+
+```
+
+```{r models}
+
+## All interactions
+m1 <- lm(HT ~ DBH * I(DBHCL) * I(YEAR) * CANHT * ELEV, data = dat)
+sm1 <- summary(m1)
+a1 <- anova(m1)
+
+## No interactions
+m2 <- lm(HT ~ DBH + I(DBHCL) + I(YEAR) + CANHT, data = dat)
+sm2 <- summary(m2)
+a2 <- anova(m2)
+
+## Interactions b/w DBH and CANHT
+m3 <- lm(HT ~ DBH * CANHT + I(YEAR) + I(DBHCL), data = dat)
+sm3 <- summary(m3)
+a3 <- anova(m3)
+
+## Interactions => DBH:CANHT, DBH:YEAR
+m4 <- lm(HT ~ DBH * CANHT + I(YEAR) + I(DBHCL) + DBH:I(YEAR), data = dat)
+sm4 <- summary(m4)
+a4 <- anova(m4)
+
+## Interactions => DBH:CANHT, DBH:YEAR, CANHT:YEAR
+m5 <- lm(HT ~ DBH * CANHT + I(YEAR) + I(DBHCL) + DBH:I(YEAR) + CANHT:I(YEAR), data = dat)
+sm5 <- summary(m5)
+a5 <- anova(m5)
+
+m6 <- lm(HT ~ DBH + I(DBHCL) + ELEV + CANHT + DBH:CANHT, data = dat)
+sm6 <- summary(m6)
+a6 <- anova(m6)
+
+m7 <- lm(HT ~ DBH + I(DBHCL) + ELEV  + DBH:CANHT, data = dat[dat$YEAR==99,])
+m8 <- lm(HT ~ DBH + I(DBHCL) + ELEV + CANHT + DBH:CANHT, data = dat[dat$YEAR==99,])
+
+m9 <- lm(HT ~ DBH + I(DBHCL) + ELEV + CANHT + DBH:CANHT, data = dat[dat$YEAR==11,])
+m10 <- lm(HT ~ DBH + I(DBHCL) + ELEV + DBH:CANHT, data = dat[dat$YEAR==11,])
+
+```
+
+- Model with year and DBHCL as indicator variables, canopy height, DBH, ELEV as continuous.  All interactions are also included.
+```{r}
+## sm1
+```
+
+- Model with no interactions, no ELEV
+```{r}
+## sm2
+```
+
+- Only interactions between DBH and canopy height, no ELEV
+```{r}
+## sm3
+```
+
+## Visualize
+**Look at them separately by DBH size classes**
+### Model 1: all interactions, continuous variables: {ELEV, CANHT, DBH}, factors: {DBHCL, YEAR}
+
+#### Separate panels for DBH classes
+Any remaining nonlinearites in the lines are from elevation effects (ie. the squiggles).
+
+```{r m1_visuals}
+
+## dat$pred <- predict(m6, newdata = dat)
+## chts <- unlist(quantile(dat$CANHT, na.rm=T))
+## chts[1] <- 0
+
+## for (i in 1:numSizes) {
+##     for (j in 1:(length(chts)-1)) {
+##         p <- ggplot(na.omit(dat[dat$CANHT > chts[[j]] & dat$CANHT <= chts[[j+1]] & dat$DBHCL == i,]),
+##                     aes(DBH, HT, color=YEAR)) + geom_point(alpha=0.5) +
+##                         geom_line(aes(DBH, pred, color=YEAR), lwd=1.2) +
+##                             facet_wrap(~ CANHT) +
+##                                 ggtitle(paste0("HT vs DBH (DBHCL == ", j, " , split by Canopy Height"))
+##         print( p )
+##     }
+## }
+
+```
+
+
+## Fit from 99
+
+```{r year_model}
+dat$pred99 <- predict(m7, newdata = dat)
+dat$pred11 <- predict(m10, newdata = dat)
+
+chts <- unlist(quantile(dat$CANHT, na.rm=T))
+chts[1] <- 0
+
+
+## for (i in 1:numSizes) {
+##     for (j in 1:(length(chts)-1)) {
+##         p <- ggplot(na.omit(dat[dat$CANHT > chts[[j]] & dat$CANHT <= chts[[j+1]] & dat$DBHCL == i,]),
+##                     aes(DBH, HT, color=YEAR)) + geom_point(alpha=0.5) +
+##                         geom_line(aes(DBH, pred, color=YEAR), lwd=1.2) +
+##                             facet_wrap(~ CANHT) +
+##                                 ggtitle(paste0("HT vs DBH (DBHCL == ", j, " , split by Canopy Height"))
+##         print( p )
+##     }
+## }
+
+trans <- levels(dat$TRAN)
+for (tran in trans) {
+
+    if (nrow(dat[dat$TRAN == tran,]) > 0) {
+
+        for (i in 1:numSizes) {
+            dd <- dat[dat$DBHCL == i & dat$TRAN == tran,]
+            p99 <- dd[dd$YEAR == 99, ]
+            p11 <- dd[dd$YEAR == 11, ]
+            
+            p <- ggplot(na.omit(dd), aes(DBH, HT, color=YEAR)) + geom_point(alpha=0.5) +
+                geom_line(data=na.omit(p99), aes(DBH, pred99), color = "blue", lty = 2) +
+                    geom_line(data=na.omit(p11), aes(DBH, pred99), color="red", lty=2) +
+                        geom_line(data=na.omit(p99), aes(DBH, pred11), color="blue") +
+                            geom_line(data=na.omit(p11), aes(DBH, pred11), color="red") +
+                                facet_wrap(~ TPLOT) +
+                                    ggtitle(paste0("Transect: ", tran, ", DBHCL == ", i))
+            print( p )
+        }
+    }
+}
+
+```
