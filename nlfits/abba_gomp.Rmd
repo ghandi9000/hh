@@ -1,0 +1,223 @@
+---
+title: "ABBA Full Gompertz Model"
+runtime: shiny
+output: html_document
+---
+
+```{r global_opts, include=FALSE}
+knitr::opts_chunk$set(fig.path='./Figs/abba_gomp', echo=FALSE,
+                      warning=FALSE, message=FALSE)
+```
+
+```{r setup}
+source("setup.R")
+source("functions.R")
+library(ggplot2)
+
+get_fit <- function(spec, yr, model, ind) {
+  fits[[grep(paste(tolower(model), tolower(spec), 
+                  yr, tolower(ind), sep="_"), names(fits))]]
+}
+
+fit99 <- get_fit("ABBA", 99, "gompertz", "full")
+fit11 <- get_fit("ABBA", 11, "gompertz", "full")
+abbas <- dat[dat$SPEC == "ABBA", ]
+
+```
+Interactive manipulation of gompertz model parameters to see affect on the curves.
+
+----------
+
+```{r, cache=FALSE}
+selectInput("model", "Choose model to load:",
+            choices=c("Gompertz", "Power", "Negative Exp."))
+checkboxGroupInput("inds", "Choose independent variables:",
+                   choices=c("elevation", "canopy height"), 
+                   selected=c("elevation", "canopy height"))
+
+
+```
+
+
+**Transect/TPLOT**
+```{r trans_tplot, results='asis'}
+library(xtable)
+print(xtable(table(abbas$TRAN, abbas$TPLOT)), type="html") 
+
+```
+
+----------
+**MODEL**
+
+$$
+HT = \beta e^{log(\frac{\gamma}{\beta})e^{-\alpha DBH}}
+$$
+$\alpha = a + a_1ELEV + a_2CANHT + a_3ELEV*CANHT$
+
+$\beta = b+b_1ELEV+b_2CANHT+b_3ELEV*CANHT$
+
+-------------
+
+```{r param_adjust, cache=FALSE}
+source(paste0("~/work/hh/nlfits/model.R"))
+
+## initial parameters on sliders
+a = coef(fit11)[["a"]]
+a1 = coef(fit11)[["a1"]]
+a2 = coef(fit11)[["a2"]]
+a3 = coef(fit11)[["a3"]]
+b = coef(fit11)[["b"]]
+b1 = coef(fit11)[["b1"]]
+b2 = coef(fit11)[["b2"]]
+b3 = coef(fit11)[["b3"]]
+
+inputPanel(
+  selectInput("yrs", label = "Years:",
+              choices = c("99", "11", "both")),
+  selectInput("tran", label = "Transect:",
+              choices = levels(abbas$TRAN)),
+  selectInput("tplot", label = "TPLOT",
+              choices = unique(abbas$TPLOT)),
+  selectInput("type", label = "Plot type",
+              choices = c("Predicted", "Residuals", "QQ")),
+  
+  sliderInput("a_adjust", label="a",  
+              min=-1, max=1, value=a, step=0.001),
+  sliderInput("a1_adjust", label="a1",
+              min=-5, max=3, value=a1, step=0.001),
+  sliderInput("a2_adjust", label="a2",
+              min=-2, max=2, value=a2, step=0.001),
+  sliderInput("a3_adjust", label="a3",
+              min=-1, max=1, value=a3, step=0.0001),
+  sliderInput("b_adjust", label="b",
+              min=-1, max=10, value=b, step=0.001),
+  sliderInput("b1_adjust", label="b1",
+              min=-1, max=1, value=b1, step=0.001),
+  sliderInput("b2_adjust", label="b2",
+              min=-1, max=5, value=b2, step=0.001),
+  sliderInput("b3_adjust", label="b3",
+              min=-1, max=1, value=b3, step=0.0001),
+  
+  actionButton("save", label = "Save?"),
+  actionButton("run", label="Run?")
+)
+
+## Save parameters
+observeEvent(input$save, {
+  ps = list(a=as.numeric(input$a_adjust),
+          a1=as.numeric(input$a1_adjust),
+          a2=as.numeric(input$a2_adjust),
+          a3=as.numeric(input$a3_adjust),
+          b=as.numeric(input$b_adjust),
+          b1=as.numeric(input$b1_adjust),
+          b2=as.numeric(input$b2_adjust),
+          b3=as.numeric(input$b3_adjust))
+  ps[["sd"]] <- 1
+  name <- tempfile(tmpdir="C:\\home\\work\\hh\\nlfits\\pars", pattern="abba")
+  print (paste0("Saved ", name))
+  saveRDS(ps, file=paste0(name, ".rds"))
+})
+
+renderPlot({
+  d <- na.omit(abbas[abbas$TRAN == as.character(input$tran) &
+                       abbas$TPLOT == as.numeric(input$tplot), ])
+  if (as.character(input$yrs) == "99") {
+    d <- d[d$YEAR == 99, ]
+    both <- FALSE
+  }
+  if (as.character(input$yrs) == "11") {
+    d <- d[d$YEAR == 11, ]
+    both <- FALSE
+  }
+  
+  ps = list(a=as.numeric(input$a_adjust),
+            a1=as.numeric(input$a1_adjust),
+            a2=as.numeric(input$a2_adjust),
+            a3=as.numeric(input$a3_adjust),
+            b=as.numeric(input$b_adjust),
+            b1=as.numeric(input$b1_adjust),
+            b2=as.numeric(input$b2_adjust),
+            b3=as.numeric(input$b3_adjust))
+  d$preds <- do.call("gompertz", list(ps=ps, 
+                                    dbh=d[["DBH"]],
+                                    elev=d[["ELEV"]],
+                                    canht=d[["CANHT"]]))
+  d$res <- d$HT - d$preds
+  
+  if (nrow(d) > 0) {
+    
+    if (input$type == "Residuals") {
+      ggplot(d, aes(preds, res, color=YEAR)) + geom_point() +
+        geom_hline(xintercept=0) +
+        ggtitle("Residuals vs. Fitted") + 
+        xlab("Fitted") + ylab("Residuals")
+    } else if (input$type == "Predicted") {
+      ggplot(d, aes(DBH, HT, color=YEAR)) + geom_point(alpha=0.5) +
+        geom_line(aes(DBH, preds, color=YEAR)) +
+        ggtitle("Height vs. DBH") + ylab("Height")
+    } else if (intput$type == "QQ") {
+      p1 <- ggplot(d, aes(sample=, color=YEAR)) + stat_qq() +
+        ggtitle("DBH")
+      p2 <- ggplot(d, aes(sample=HT, color=YEAR)) + stat_qq() +
+        ggtitle("Height")
+      multiplot(p1, p2, cols=2)
+    }
+  }
+    
+})
+
+observeEvent(input$run, {
+  textOutput({
+    paste("Not implemented")
+  })
+})
+
+```
+
+
+```{r, echo = FALSE}
+selectInput("dataset", "Choose Dataset:", c("Permanent", "Transect"))
+activeDataset <- reactive({
+  if (input$dataset == "Permanent") n <- "pp"
+  if (input$dataset == "Transect") n <- "tp"
+  get(n, pos=-1)
+})
+cnames <- reactive({
+  if (input$dataset == "Permanent") names(pp)
+  if (input$dataset == "Transect") names(tp)
+})
+
+
+# checkboxGroupInput("columns", "Choose columns:",
+#                    choices = names(pp))
+
+renderTable({
+  perm <- ifelse("PPLOT" %in% names(activeDataset()), T, F)
+  table(ELEVCL = activeDataset()[["ELEVCL"]], ASPCL = activeDataset()[["ASPCL"]])
+})
+
+# renderPlot({
+#   plot(activeDataset()$DBH, activeDataset()$HT)
+# })
+```
+
+
+```{r app, cache=FALSE, echo=FALSE, warning=FALSE}
+
+# inputPanel(
+#     selectInput("n_breaks", label = "Number of bins:",
+#                 choices = c(10, 20, 35, 50), selected=20),
+#     sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+#                 min=0.2, max=2, value=1, step=0.2)
+# )
+# 
+# renderPlot({
+#     hist(faithful$eruptions, probability=TRUE, 
+#          breaks=as.numeric(input$n_breaks),
+#          xlab="Duration (minutes)", main="Geyser eruption duration")
+#     
+#     dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+#     lines(dens, col="blue")
+# })
+
+```

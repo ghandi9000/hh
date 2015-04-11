@@ -3,7 +3,7 @@
 ## Description: Compare fits
 ## Author: Noah Peart
 ## Created: Mon Mar 30 18:04:51 2015 (-0400)
-## Last-Updated: Mon Apr  6 12:12:40 2015 (-0400)
+## Last-Updated: Fri Apr 10 21:21:05 2015 (-0400)
 ##           By: Noah Peart
 ######################################################################
 source("~/work/ecodatascripts/vars/heights/prep.R")                 # data prep
@@ -29,6 +29,7 @@ for (model in models) {
         for (spec in specs) {
             for (yr in yrs) {
                 dat <- prep_hh(dat=tp, yr=yr, spec=spec, can_func=can_func)
+                dat$ELEV <- dat$ELEV/1000
                 ps <- readRDS(paste0(inddir, tolower(spec), "/", tolower(spec), "_", yr, ".rds"))
                 fit <- run_fit(dat, ps, yr)
                 name <- paste(tolower(model),tolower(spec), yr, ind, sep="_")
@@ -58,6 +59,7 @@ stats$AIC <- as.numeric(as.character(stats$AIC))
 stats$AICc <- as.numeric(as.character(stats$AICc))
 
 ## Save fits/stats to temp
+if (!file.exists("~/work/hh/temp")) dir.create("~/work/hh/temp")
 saveRDS(fits, "./temp/fits.rds")
 saveRDS(stats, "./temp/stats.rds")
 
