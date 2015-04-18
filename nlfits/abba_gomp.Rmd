@@ -156,7 +156,7 @@ renderPlot({
         geom_line(aes(DBH, preds, color=YEAR)) +
         ggtitle("Height vs. DBH") + ylab("Height")
     } else if (intput$type == "QQ") {
-      p1 <- ggplot(d, aes(sample=, color=YEAR)) + stat_qq() +
+      p1 <- ggplot(d, aes(sample=DBH, color=YEAR)) + stat_qq() +
         ggtitle("DBH")
       p2 <- ggplot(d, aes(sample=HT, color=YEAR)) + stat_qq() +
         ggtitle("Height")
